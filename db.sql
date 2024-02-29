@@ -24,8 +24,9 @@ SET reg_date = NOW(),
 update_date = NOW(),
 user_code = 'localhost',
 `no` = 1,
+
 perform_date = NOW(),
-content = '기상';
+content = '기상';s
 
 INSERT INTO todo
 SET reg_date = NOW(),
