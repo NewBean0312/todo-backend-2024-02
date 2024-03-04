@@ -15,12 +15,14 @@ const pool = mysql.createPool({
 });
 
 const app = express();
+app.use(express.json());
 
 // CORS 미들웨어 추가
 app.use(cors());
 
 const port = 3000;
 
+// 데이터 조회
 app.get("/:user_code/todos", async (req, res) => {
   const { user_code } = req.params;
 
@@ -41,6 +43,7 @@ app.get("/:user_code/todos", async (req, res) => {
   });
 });
 
+// 데이터 단건조회
 app.get("/:user_code/todos/:no", async (req, res) => {
   const { user_code, no } = req.params;
 
@@ -69,6 +72,7 @@ app.get("/:user_code/todos/:no", async (req, res) => {
   });
 });
 
+// 데이터 삭제
 app.delete("/:user_code/todos/:no", async (req, res) => {
   const { user_code, no } = req.params;
 
@@ -102,6 +106,70 @@ app.delete("/:user_code/todos/:no", async (req, res) => {
   res.json({
     resultCode: "S-1",
     msg: `${no}번 할 일을 삭제하였습니다.`,
+  });
+});
+
+// 데이터 생성
+app.post("/:user_code/todos", async (req, res) => {
+  const { user_code } = req.params;
+
+  const { content, perform_date, is_completed = 0 } = req.body;
+
+  if (!content) {
+    res.status(400).json({
+      resultCode: "F-1",
+      msg: "content required",
+    });
+  }
+
+  if (!perform_date) {
+    res.status(400).json({
+      resultCode: "F-1",
+      msg: "perform_date required",
+    });
+  }
+
+  const [[lastTodoRow]] = await pool.query(
+    `
+    SELECT no
+    FROM todo
+    WHERE user_code = ?
+    ORDER BY id DESC
+    LIMIT 1
+    `,
+    [user_code]
+  );
+
+  // 넘버링 지정
+  const no = lastTodoRow?.no + 1 || 1;
+
+  const [insertTodoRs] = await pool.query(
+    `
+    INSERT INTO todo
+    SET reg_date = NOW(),
+    update_date = NOW(),
+    user_code = ?,
+    no = ?,
+    content = ?,
+    perform_date = ?,
+    is_completed = ?
+    `,
+    [user_code, no, content, perform_date, is_completed]
+  );
+
+  const [justCreatedTodoRow] = await pool.query(
+    `
+    SELECT *
+    FROM todo
+    WHERE id = ?
+    `,
+    [insertTodoRs.insertId]
+  );
+
+  res.json({
+    resultCode: "S-1",
+    msg: `${justCreatedTodoRow.id}번 할 일을 생성하였습니다.`,
+    data: justCreatedTodoRow,
   });
 });
 
